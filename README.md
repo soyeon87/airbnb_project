@@ -734,9 +734,9 @@ public interface ReservationStatusViewRepository extends CrudRepository<Reservat
 ```
 
 실제 MariaDB 접속하여 확인 시, 데이터 확인 가능 (ex. Customer에서 객실 예약 요청한 경우)
+- http POST http://localhost:8088/reservations customerId=1 roomId=1 roomName=“101호” customerName=“soyeon” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED"
 
 ![image](https://user-images.githubusercontent.com/45943968/130158245-2d242319-ab00-4224-9c88-93f4a90b7311.png)
-
 
 
 # 운영
