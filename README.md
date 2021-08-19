@@ -228,16 +228,18 @@ AirBnB 커버하기
 숙소 생성 및 예약/결재 등 총 Status 에 대하여 고객(customer)/호텔매니저(hotel)가 조회 할 수 있도록 CQRS 로 구현하였다.
 - customer, payment, hotel 개별 Aggregate Status 를 통합 조회하여 성능 Issue 를 사전에 예방할 수 있다.
 - 비동기식으로 처리되어 발행된 이벤트 기반 Kafka 를 통해 수신/처리 되어 별도 Table 에 관리한다
-- Table 모델링 (ROOMVIEW)
+- Table 모델링
+  ![image](https://user-images.githubusercontent.com/45943968/130036215-49ef828e-bee8-4160-8536-3da2cac75a71.png)
 
-  ![image](https://user-images.githubusercontent.com/77129832/119319352-4b198c00-bcb5-11eb-93bc-ff0657feeb9f.png)
-- viewpage MSA ViewHandler 를 통해 구현 ("RoomRegistered" 이벤트 발생 시, Pub/Sub 기반으로 별도 Roomview 테이블에 저장)
-  ![image](https://user-images.githubusercontent.com/77129832/119321162-4d7ce580-bcb7-11eb-9030-29ee6272c40d.png)
-  ![image](https://user-images.githubusercontent.com/31723044/119350185-fccab400-bcd9-11eb-8269-61868de41cc7.png)
-- 실제로 view 페이지를 조회해 보면 모든 room에 대한 전반적인 예약 상태, 결제 상태, 리뷰 건수 등의 정보를 종합적으로 알 수 있다
-  ![image](https://user-images.githubusercontent.com/31723044/119357063-1b34ad80-bce2-11eb-94fb-a587261ab56f.png)
+- viewPage MSA PolicyHandler 를 통해 구현 
+  ("RoomCreated" 이벤트 발생 시, Pub/Sub 기반으로 별도 테이블에 저장)
+  ![image](https://user-images.githubusercontent.com/45943968/130036716-7010815f-7d31-4201-8a02-dac1af5193ed.png)
+  ("RoomReservationReqeusted" 이벤트 발생 시, Pub/Sub 기반으로 별도 테이블에 저장)
+  ![image](https://user-images.githubusercontent.com/45943968/130036767-65e85e0b-503e-4fa8-b505-4b860eccd8ee.png)
 
-
+- 실제로 view 페이지를 조회해 보면 모든 room에 대한 정보, 예약 상태, 결제 상태 등의 정보를 종합적으로 알 수 있다.
+  ![image](https://user-images.githubusercontent.com/45943968/130037060-ff52d49c-733a-4dd5-a741-85416691ce50.png)
+  
 ## API 게이트웨이
       1. gateway 스프링부트 App을 추가 후 application.yaml내에 각 마이크로 서비스의 routes 를 추가하고 gateway 서버의 포트를 8080 으로 설정함
        
