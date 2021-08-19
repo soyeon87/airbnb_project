@@ -667,7 +667,6 @@ package project;
 @Service
 public class PolicyHandler{
 
-```
     @StreamListener(KafkaProcessor.INPUT)
     public void wheneverPaymentFinished_UpdateReservationInfo(@Payload PaymentFinished paymentFinished){
         /* 결제 완료 (PAY_FINISHED) */
