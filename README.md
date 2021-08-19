@@ -626,36 +626,33 @@ http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“1
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
 
-결제가 이루어진 후에 호텔 시스템의 상태가 업데이트 되고, 예약 시스템의 상태가 업데이트 되며, 예약 및 취소 메시지가 전송되는 시스템과의 통신 행위는 비동기식으로 처리한다.
+결제가 이루어진 후에 호텔 시스템의 상태가 업데이트 되고, 예약 시스템의 상태가 업데이트 되며 비동기식으로 호출된다.
 
 - 이를 위하여 결제가 승인되면 결제가 승인 되었다는 이벤트를 카프카로 송출한다. (Publish)
  
 ```
 # Payment.java
 
-package airbnb;
+package project;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+import java.util.List;
+import java.util.Date;
 
 @Entity
 @Table(name="Payment_table")
 public class Payment {
 
     ....
-
-    @PostPersist
+   @PostPersist
     public void onPostPersist(){
-        ////////////////////////////
-        // 결제 승인 된 경우
-        ////////////////////////////
 
-        // 이벤트 발행 -> PaymentApproved
-        PaymentApproved paymentApproved = new PaymentApproved();
-        BeanUtils.copyProperties(this, paymentApproved);
-        paymentApproved.publishAfterCommit();
+        /* 결제 승인 이벤트 */
+        PaymentFinished paymentFinished = new PaymentFinished();
+        BeanUtils.copyProperties(this, paymentFinished);
+        paymentFinished.publishAfterCommit();
     }
-    
     ....
 }
 ```
@@ -663,43 +660,38 @@ public class Payment {
 - 예약 시스템에서는 결제 승인 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
 
 ```
-# Reservation.java
+# PolicyHandler.java
 
-package airbnb;
+package project;
 
-    @PostUpdate
-    public void onPostUpdate(){
-    
-        ....
+@Service
+public class PolicyHandler{
 
-        if(this.getStatus().equals("reserved")) {
+```
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverPaymentFinished_UpdateReservationInfo(@Payload PaymentFinished paymentFinished){
+        /* 결제 완료 (PAY_FINISHED) */
+        /* 결제가 완료되면 객실 상태(paymentStatus)를 변경 */
+ 
+        if(!paymentFinished.validate()) return;
 
-            ////////////////////
-            // 예약 확정된 경우
-            ////////////////////
+        System.out.println("\n\n##### listener UpdateReservationInfo : " + paymentFinished.toJson() + "\n\n");
 
-            // 이벤트 발생 --> ReservationConfirmed
-            ReservationConfirmed reservationConfirmed = new ReservationConfirmed();
-            BeanUtils.copyProperties(this, reservationConfirmed);
-            reservationConfirmed.publishAfterCommit();
-        }
-        
-        ....
-        
+        saveChangedStatus(paymentFinished.getReservationId(), "", "PAY_FINISHED");
+
     }
-
 ```
 
-그 외 메시지 서비스는 예약/결제와 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 메시지 서비스가 유지보수로 인해 잠시 내려간 상태 라도 예약을 받는데 문제가 없다.
+그 외 예약 승인/거부는 예약/결제와 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 유지보수로 인해 잠시 내려간 상태 라도 예약을 받는데 문제가 없다.
 
 ```
-# 메시지 서비스 (message) 를 잠시 내려놓음 (ctrl+c)
+# 호텔 서비스 (hotel) 를 잠시 내려놓음 (ctrl+c)
 
-# 예약 요청
-http POST http://localhost:8088/reservations roomId=1 status=reqReserve   #Success
+# 예약 요청  #Success
+http POST http://localhost:8088/reservations customerId=1 roomId=3 roomName=“103호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED"  
 
 # 예약 상태 확인
-http GET localhost:8088/reservations    #메시지 서비스와 상관없이 예약 상태는 정상 확인
+http http://localhost:8088/reservations   # hotel 서비스와 상관없이 예약 상태는 정상 확인
 
 ```
 
