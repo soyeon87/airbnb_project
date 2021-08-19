@@ -229,6 +229,7 @@ AirBnB 커버하기
 - customer, payment, hotel 개별 Aggregate Status 를 통합 조회하여 성능 Issue 를 사전에 예방할 수 있다.
 - 비동기식으로 처리되어 발행된 이벤트 기반 Kafka 를 통해 수신/처리 되어 별도 Table 에 관리한다
 - Table 모델링
+
   ![image](https://user-images.githubusercontent.com/45943968/130036215-49ef828e-bee8-4160-8536-3da2cac75a71.png)
 
 - viewPage MSA PolicyHandler 를 통해 구현 
@@ -245,44 +246,40 @@ AirBnB 커버하기
        
           - application.yaml 예시
             ```
-            spring:
-              profiles: docker
-              cloud:
-                gateway:
-                  routes:
-                    - id: payment
-                      uri: http://payment:8080
-                      predicates:
-                        - Path=/payments/** 
-                    - id: room
-                      uri: http://room:8080
-                      predicates:
-                        - Path=/rooms/**, /reviews/**, /check/**
-                    - id: reservation
-                      uri: http://reservation:8080
-                      predicates:
-                        - Path=/reservations/**
-                    - id: message
-                      uri: http://message:8080
-                      predicates:
-                        - Path=/messages/** 
-                    - id: viewpage
-                      uri: http://viewpage:8080
-                      predicates:
-                        - Path= /roomviews/**
-                  globalcors:
-                    corsConfigurations:
-                      '[/**]':
-                        allowedOrigins:
-                          - "*"
-                        allowedMethods:
-                          - "*"
-                        allowedHeaders:
-                          - "*"
-                        allowCredentials: true
+               spring:
+		  profiles: docker
+		  cloud:
+		    gateway:
+		      routes:
+			- id: customer
+			  uri: http://customer:8080
+			  predicates:
+			    - Path=/reservations/** 
+			- id: payment
+			  uri: http://payment:8080
+			  predicates:
+			    - Path=/payments/** 
+			- id: hotel
+			  uri: http://hotel:8080
+			  predicates:
+			    - Path=/roomManagements/** 
+			- id: viewPage
+			  uri: http://viewPage:8080
+			  predicates:
+			    - Path=/reservationStatusViews/**
+		      globalcors:
+			corsConfigurations:
+			  '[/**]':
+			    allowedOrigins:
+			      - "*"
+			    allowedMethods:
+			      - "*"
+			    allowedHeaders:
+			      - "*"
+			    allowCredentials: true
 
-            server:
-              port: 8080            
+		server:
+		  port: 8080
             ```
 
          
