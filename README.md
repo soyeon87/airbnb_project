@@ -540,39 +540,23 @@ http GET http://localhost:8088/reservations
 
 ## 동기식 호출(Sync) 과 Fallback 처리
 
-분석 단계에서의 조건 중 하나로 예약 시 숙소(room) 간의 예약 가능 상태 확인 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 또한 예약(reservation) -> 결제(payment) 서비스도 동기식으로 처리하기로 하였다.
+분석단계에서의 조건 중 하나로 예약(customer)->결제(payment) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient로 이용하여 호출하도록 한다.
 
-- 룸, 결제 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+- 결제 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
 # PaymentService.java
 
-package airbnb.external;
+package project.external;
 
-<import문 생략>
+<!--import 문 생략 -->
 
 @FeignClient(name="Payment", url="${prop.room.url}")
 public interface PaymentService {
-
     @RequestMapping(method= RequestMethod.POST, path="/payments")
-    public void approvePayment(@RequestBody Payment payment);
+    public void requestPayment(@RequestBody Payment payment);
 
 }
-
-# RoomService.java
-
-package airbnb.external;
-
-<import문 생략>
-
-@FeignClient(name="Room", url="${prop.room.url}")
-public interface RoomService {
-
-    @RequestMapping(method= RequestMethod.GET, path="/check/chkAndReqReserve")
-    public boolean chkAndReqReserve(@RequestParam("roomId") long roomId);
-
-}
-
 
 ```
 
@@ -580,43 +564,41 @@ public interface RoomService {
 ```
 # Reservation.java (Entity)
 
-    @PostPersist
+     @PostPersist
     public void onPostPersist(){
+        System.out.println("*****객실 예약이 요청됨*****");
 
-        ////////////////////////////////
-        // RESERVATION에 INSERT 된 경우 
-        ////////////////////////////////
+        /* 객실 예약이 요청됨 */
 
-        ////////////////////////////////////
-        // 예약 요청(reqReserve) 들어온 경우
-        ////////////////////////////////////
+        // mappings goes here
+        /* 결제(payment) 동기 호출 진행 */
+        /* 결제 진행 가능 여부 확인 후 결제 */
+        project.external.Payment payment = new project.external.Payment();
+        if(this.getReservationStatus().equals("RSV_REQUESTED") && this.getPaymentStatus().equals("PAY_REQUESTED")){
 
-        // 해당 ROOM이 Available한 상태인지 체크
-        boolean result = ReservationApplication.applicationContext.getBean(airbnb.external.RoomService.class)
-                        .chkAndReqReserve(this.getRoomId());
-        System.out.println("######## Check Result : " + result);
-
-        if(result) { 
-
-            // 예약 가능한 상태인 경우(Available)
-
-            //////////////////////////////
-            // PAYMENT 결제 진행 (POST방식) - SYNC 호출
-            //////////////////////////////
-            airbnb.external.Payment payment = new airbnb.external.Payment();
-            payment.setRsvId(this.getRsvId());
+            payment.setReservationId(this.getId());
+            payment.setCustomerId(this.getCustomerId());
             payment.setRoomId(this.getRoomId());
-            payment.setStatus("paid");
-            ReservationApplication.applicationContext.getBean(airbnb.external.PaymentService.class)
-                .approvePayment(payment);
-
-            /////////////////////////////////////
-            // 이벤트 발행 --> ReservationCreated
-            /////////////////////////////////////
-            ReservationCreated reservationCreated = new ReservationCreated();
-            BeanUtils.copyProperties(this, reservationCreated);
-            reservationCreated.publishAfterCommit();
+            payment.setRoomName(this.getRoomName());
+            payment.setRoomPrice(this.getRoomPrice());
+            payment.setCustomerName(this.getCustomerName());
+            payment.setHotelId(this.getHotelId());
+            payment.setHotelName(this.getHotelName());
+            payment.setCheckInDate(this.getCheckInDate());
+            payment.setCheckOutDate(this.getCheckOutDate());
+            payment.setReservationStatus("RSV_REQUESTED");
+            payment.setPaymentStatus("PAY_FINISHED");
         }
+        
+         CustomerApplication.applicationContext.getBean(project.external.PaymentService.class)
+            .requestPayment(payment);
+
+        //Following code causes dependency to external APIs
+        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
+        RoomReservationReqeusted roomReservationReqeusted = new RoomReservationReqeusted();
+        BeanUtils.copyProperties(this, roomReservationReqeusted);
+        roomReservationReqeusted.publishAfterCommit();
+
     }
 ```
 
@@ -624,21 +606,20 @@ public interface RoomService {
 
 
 ```
-# 결제 (pay) 서비스를 잠시 내려놓음 (ctrl+c)
+# 결제 (payment) 서비스를 잠시 내려놓음 (ctrl+c)
 
-# 예약 요청
-http POST http://localhost:8088/reservations roomId=1 status=reqReserve   #Fail
+# 예약 요청 #Fail
+http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“101호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED" 
 
 # 결제서비스 재기동
 cd payment
 mvn spring-boot:run
 
-# 예약 요청
-http POST http://localhost:8088/reservations roomId=1 status=reqReserve   #Success
+# 예약 요청  #Success
+http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“101호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED" 
 ```
 
 - 또한 과도한 요청시에 서비스 장애가 도미노 처럼 벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
-
 
 
 
