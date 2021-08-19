@@ -373,43 +373,70 @@ hotel reservation 프로젝트에서는 PolicyHandler에서 처리 시 어떤 �
 확인할 수 있습니다.
 
 예약등록
-![image](https://user-images.githubusercontent.com/31723044/119320227-54572880-bcb6-11eb-973b-a9a5cd1f7e21.png)
+http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“101호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED"
+
 예약 후 - 예약 상태
-![image](https://user-images.githubusercontent.com/31723044/119320390-810b4000-bcb6-11eb-8c62-48f6765c570a.png)
+http http://localhost:8088/reservations
+
 예약 후 - 결제 상태
-![image](https://user-images.githubusercontent.com/31723044/119320524-a39d5900-bcb6-11eb-864b-173711eb9e94.png)
+http http://localhost:8088/payments
+
 예약 취소
-![image](https://user-images.githubusercontent.com/31723044/119320595-b6b02900-bcb6-11eb-8d8d-0d5c59603c72.png)
-취소 후 - 방 상태
-![image](https://user-images.githubusercontent.com/31723044/119320680-ccbde980-bcb6-11eb-8b7c-66315329aafe.png)
+http PATCH http://localhost:8088/reservations/2 reservationStatus="RSV_CANCELED"
+
 취소 후 - 예약 상태
-![image](https://user-images.githubusercontent.com/31723044/119320747-dcd5c900-bcb6-11eb-9c44-fd3781c7c55f.png)
+http http://localhost:8088/reservations
+
 취소 후 - 결제 상태
-![image](https://user-images.githubusercontent.com/31723044/119320806-ee1ed580-bcb6-11eb-8ccf-8c81385cc8ba.png)
+http http://localhost:8088/payments
 
 
 ## DDD 의 적용
 
-- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 room 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가는한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
+- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 Reservation 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가는한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
 
 ```
-package airbnb;
+package project;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+import java.util.List;
+import java.util.Date;
 
 @Entity
-@Table(name="Room_table")
-public class Room {
+@Table(name="Reservation_table")
+public class Reservation {
 
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private Long roomId;       // 방ID
-    private String status;     // 방 상태
-    private String desc;       // 방 상세 설명
-    private Long reviewCnt;    // 리뷰 건수
-    private String lastAction; // 최종 작업
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id; 
+    private Long customerId;  // 고객 ID
+    private Long roomId; // 객실 ID
+    private String roomName; // 객실 이름
+    private String customerName; // 고객 이름 
+    private String reservationStatus; // 예약상태 (status: "RSV_REQUESTED", "RSV_APPROVED", "RSV_CANCELED", "RSV_REJECTED") 
+    private Long hotelId; // 호텔 ID
+    private String hotelName; // 호텔 이름
+    private Date checkInDate; // 체크인 날짜
+    private Date checkOutDate; // 체크아웃 날짜
+    private Long roomPrice; // 객실 가격
+    private String paymentStatus;  //결제상태 (status: "PAY_REQUESTED", "PAY_FINISHED", "PAY_CANCELED" )
 
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
+    }
     public Long getRoomId() {
         return roomId;
     }
@@ -417,58 +444,96 @@ public class Room {
     public void setRoomId(Long roomId) {
         this.roomId = roomId;
     }
-    public String getStatus() {
-        return status;
+    public String getCustomerName() {
+        return customerName;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
     }
-    public String getDesc() {
-        return desc;
-    }
-
-    public void setDesc(String desc) {
-        this.desc = desc;
-    }
-    public Long getReviewCnt() {
-        return reviewCnt;
+    public String getReservationStatus() {
+        return reservationStatus;
     }
 
-    public void setReviewCnt(Long reviewCnt) {
-        this.reviewCnt = reviewCnt;
+    public void setReservationStatus(String reservationStatus) {
+        this.reservationStatus = reservationStatus;
     }
-    public String getLastAction() {
-        return lastAction;
+    public Long getHotelId() {
+        return hotelId;
     }
 
-    public void setLastAction(String lastAction) {
-        this.lastAction = lastAction;
+    public void setHotelId(Long hotelId) {
+        this.hotelId = hotelId;
+    }
+    public String getHotelName() {
+        return hotelName;
+    }
+
+    public void setHotelName(String hotelName) {
+        this.hotelName = hotelName;
+    }
+    public Date getCheckInDate() {
+        return checkInDate;
+    }
+
+    public void setCheckInDate(Date checkInDate) {
+        this.checkInDate = checkInDate;
+    }
+    public Date getCheckOutDate() {
+        return checkOutDate;
+    }
+
+    public void setCheckOutDate(Date checkOutDate) {
+        this.checkOutDate = checkOutDate;
+    }
+    public Long getRoomPrice() {
+        return roomPrice;
+    }
+
+    public void setRoomPrice(Long roomPrice) {
+        this.roomPrice = roomPrice;
+    }
+
+    public String getPaymentStatus() {
+        return this.paymentStatus;
+    }
+
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public String getRoomName() {
+        return this.roomName;
+    }
+
+    public void setRoomName(String roomName) {
+        this.roomName = roomName;
     }
 }
 
 ```
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 ```
-package airbnb;
+package project;
 
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
-@RepositoryRestResource(collectionResourceRel="rooms", path="rooms")
-public interface RoomRepository extends PagingAndSortingRepository<Room, Long>{
+@RepositoryRestResource(collectionResourceRel="reservations", path="reservations")
+public interface ReservationRepository extends PagingAndSortingRepository<Reservation, Long>{
 
 }
+
 ```
 - 적용 후 REST API 의 테스트
 ```
-# room 서비스의 room 등록
-http POST http://localhost:8088/rooms desc="Beautiful House"  
+# hotel 서비스의 room 등록
+http POST http://localhost:8088/roomManagements roomId=2 roomName="101호" roomStatus="ROOM_CREATED" roomPrice=1000 hotelId=1 hotelName="신라"
 
-# reservation 서비스의 예약 요청
-http POST http://localhost:8088/reservations roomId=1 status=reqReserve
+# customer 서비스의 예약 요청
+http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“101호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED"
 
-# reservation 서비스의 예약 상태 확인
+# customer 서비스의 예약 상태 확인
 http GET http://localhost:8088/reservations
 
 ```
