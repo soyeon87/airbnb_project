@@ -234,11 +234,14 @@ AirBnB 커버하기
 
 - viewPage MSA PolicyHandler 를 통해 구현 
   ("RoomCreated" 이벤트 발생 시, Pub/Sub 기반으로 별도 테이블에 저장)
+
   ![image](https://user-images.githubusercontent.com/45943968/130036716-7010815f-7d31-4201-8a02-dac1af5193ed.png)
   ("RoomReservationReqeusted" 이벤트 발생 시, Pub/Sub 기반으로 별도 테이블에 저장)
+
   ![image](https://user-images.githubusercontent.com/45943968/130036767-65e85e0b-503e-4fa8-b505-4b860eccd8ee.png)
 
 - 실제로 view 페이지를 조회해 보면 모든 room에 대한 정보, 예약 상태, 결제 상태 등의 정보를 종합적으로 알 수 있다.
+
   ![image](https://user-images.githubusercontent.com/45943968/130037060-ff52d49c-733a-4dd5-a741-85416691ce50.png)
   
 ## API 게이트웨이
