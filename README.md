@@ -255,19 +255,19 @@ AirBnB 커버하기
 		    gateway:
 		      routes:
 			- id: customer
-			  uri: http://customer:8080
+			  uri: http://user04-customer:8080
 			  predicates:
 			    - Path=/reservations/** 
 			- id: payment
-			  uri: http://payment:8080
+			  uri: http://user04-payment:8080
 			  predicates:
 			    - Path=/payments/** 
 			- id: hotel
-			  uri: http://hotel:8080
+			  uri: http://user04-hotel:8080
 			  predicates:
 			    - Path=/roomManagements/** 
 			- id: viewPage
-			  uri: http://viewPage:8080
+			  uri: http://user04-viewPage:8080
 			  predicates:
 			    - Path=/reservationStatusViews/**
 		      globalcors:
@@ -286,78 +286,64 @@ AirBnB 커버하기
             ```
 
          
-      2. Kubernetes용 Deployment.yaml 을 작성하고 Kubernetes에 Deploy를 생성함
-          - Deployment.yaml 예시
+      2. buildspec.yml 파일의 Deployment 설정 내용 
           
-
             ```
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: gateway
-              namespace: airbnb
-              labels:
-                app: gateway
-            spec:
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: gateway
-              template:
-                metadata:
-                  labels:
-                    app: gateway
-                spec:
-                  containers:
-                    - name: gateway
-                      image: 247785678011.dkr.ecr.us-east-2.amazonaws.com/gateway:1.0
-                      ports:
-                        - containerPort: 8080
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: $_PROJECT_NAME
+            namespace: $_NAMESPACE
+            labels:
+              app: $_PROJECT_NAME
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: $_PROJECT_NAME
+            template:
+              metadata:
+                labels:
+                  app: $_PROJECT_NAME
+              spec:
+                containers:
+                  - name: $_PROJECT_NAME
+                    image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$_PROJECT_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+                    ports:
+                      - containerPort: 8080
             ```               
-            
 
-            ```
-            Deploy 생성
-            kubectl apply -f deployment.yaml
-            ```     
           - Kubernetes에 생성된 Deploy. 확인
             
 ![image](https://user-images.githubusercontent.com/80744273/119321943-1d821200-bcb8-11eb-98d7-bf8def9ebf80.png)
 	    
             
-      3. Kubernetes용 Service.yaml을 작성하고 Kubernetes에 Service/LoadBalancer을 생성하여 Gateway 엔드포인트를 확인함. 
+      3. buildspec.yml 파일에 Service 설정하고 Gateway 엔드포인트를 확인함. 
           - Service.yaml 예시
           
             ```
             apiVersion: v1
-              kind: Service
-              metadata:
-                name: gateway
-                namespace: airbnb
-                labels:
-                  app: gateway
-              spec:
-                ports:
-                  - port: 8080
-                    targetPort: 8080
-                selector:
-                  app: gateway
-                type:
-                  LoadBalancer           
+            kind: Service
+            metadata:
+              name: $_PROJECT_NAME
+              namespace: $_NAMESPACE
+              labels:
+                app: $_PROJECT_NAME
+            spec:
+              ports:
+                - port: 8080
+                  targetPort: 8080
+              selector:
+                app: $_PROJECT_NAME
+              type:
+                LoadBalancer   
             ```             
-
-           
-            ```
-            Service 생성
-            kubectl apply -f service.yaml            
-            ```             
-            
-            
+ 
           - API Gateay 엔드포인트 확인
            
             ```
             Service  및 엔드포인트 확인 
-            kubectl get svc -n airbnb           
+            kubectl get service -n hotels      
             ```                 
 ![image](https://user-images.githubusercontent.com/80744273/119318358-2a046b80-bcb4-11eb-9d46-ef2d498c2cff.png)
 
@@ -619,7 +605,7 @@ mvn spring-boot:run
 http POST http://localhost:8088/reservations customerId=1 roomId=2 roomName=“101호” customerName=“정지은” hotelId=1 hotelName=“신라” checkInDate=2021-08-18 checkOutDate=2021-09-01 roomPrice=1000 reservationStatus=“RSV_REQUESTED" paymentStatus="PAY_REQUESTED" 
 ```
 
-- 또한 과도한 요청시에 서비스 장애가 도미노 처럼 벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
+- 또한 과도한 요청시에 서비스 장애가 도미노 처럼 벌어질 수 있다. (서킷브레이커 처리는 운영단계에서 설명한다.)
 
 
 
@@ -696,7 +682,8 @@ http http://localhost:8088/reservations   # hotel 서비스와 상관없이 예�
 
 ## 폴리글랏 퍼시스턴스
 
-viewPage 는 RDB 계열의 데이터베이스인 Maria DB 를 사용하기로 하였다. 별다른 작업없이 기존의 Entity Pattern 과 Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 Maria DB 에 부착시켰다.
+viewPage 는 RDB 계열의 데이터베이스인 Maria DB 를 사용하기로 하였다. 
+별다른 작업없이 기존의 Entity Pattern 과 Repository Pattern 적용과 데이터베이스 관련 설정 (pom.xml, application.yml) 만으로 Maria DB 에 부착시켰다.
 
 ```
 # ReservationStatusView.java
@@ -745,6 +732,10 @@ public interface ReservationStatusViewRepository extends CrudRepository<Reservat
     password: ####   (계정정보 숨김처리)
 
 ```
+
+실제 MariaDB 접속하여 확인 시, 데이터 확인 가능 (ex. Customer에서 객실 예약 요청한 경우)
+
+![image](https://user-images.githubusercontent.com/45943968/130158245-2d242319-ab00-4224-9c88-93f4a90b7311.png)
 
 
 
