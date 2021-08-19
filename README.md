@@ -694,6 +694,60 @@ http http://localhost:8088/reservations   # hotel 서비스와 상관없이 예�
 
 ```
 
+## 폴리글랏 퍼시스턴스
+
+viewPage 는 RDB 계열의 데이터베이스인 Maria DB 를 사용하기로 하였다. 별다른 작업없이 기존의 Entity Pattern 과 Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 Maria DB 에 부착시켰다.
+
+```
+# ReservationStatusView.java
+
+package project;
+
+import javax.persistence.*;
+import java.util.List;
+import java.util.Date;
+
+@Entity
+@Table(name="ReservationStatusView_table")
+public class ReservationStatusView {
+
+}
+
+# ReservationStatusViewRepository.java
+package project;
+
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+
+public interface ReservationStatusViewRepository extends CrudRepository<ReservationStatusView, Long> {
+    ReservationStatusView findByReservationId(Long reservationId);
+    ReservationStatusView findByRoomId(Long roomId);
+    
+}
+
+# pom.xml
+
+	<dependency>
+		<groupId>org.mariadb.jdbc</groupId>
+		<artifactId>mariadb-java-client</artifactId>
+		<scope>runtime</scope>
+	</dependency>
+		
+
+# application.yml
+
+  datasource:
+    url: jdbc:mariadb://localhost:3306/test
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: ####   (계정정보 숨김처리)
+    password: ####   (계정정보 숨김처리)
+
+```
+
+
+
 # 운영
 
 
